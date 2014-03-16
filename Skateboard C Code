@@ -1,0 +1,121 @@
+/*The following code can be used to drive Skateboard using FSR as the Pressure sensor and ADC channel 0 and channel 1 
+is used to convert Analog values from the two pressure sensor into digital values which are the used for PWM. 
+
+This code can be compiled in programmers notepad and can be burnt into Atmega16. */
+
+/* I N C L U D E S */
+#include<avr/io.h>
+#include<stdlib.h>
+#include<compat/deprecated.h>
+#include<util/delay.h>
+#include<avr/eeprom.h>
+#include<io.h>
+/* E N D S */
+
+void pwm1_init(void)
+{
+
+ PWM1A_DIR=1;
+ PWM1B_DIR=1;
+ TCCR1B = 0x00; //stop
+ TCNT1H = 0x00; //setup
+ TCNT1L = 0x00;
+ OCR1AH = 0x00;
+ OCR1AL = 0x00;
+ OCR1BH = 0x00;
+ OCR1BL = 0x00;
+ ICR1H  = 0x00;
+ ICR1L  = 0xFF;
+ TCCR1A = 0xA2;
+ TCCR1B = 0x1C; //start Timer WITH PRESCALAR 1024
+}
+
+//Motion of Skateboard
+void bot_motion_init(void)
+{
+DDRC=0xff;		//Mptors are connected to PORTC
+}
+
+//ADC Initialize
+void adc_init(void)
+{
+ ADC_DIR=0X00;
+ ADCSRA=0X00;
+ ADMUX=0X60;//0x40 for 10 bits
+ ADCSRA=0X87;
+ ACSR=0X80;
+}
+
+//ADC START
+unsigned char adc_start(unsigned char channel)
+{
+ unsigned char i;
+ 
+     ADCH=0x00;
+
+	 i=channel&0x07;
+	 ADMUX=i|0x60;                //i|0x40 for 10 bits
+	 ADCSRA|=1<<ADSC;
+	   
+		 while(ADCSRA & (1<<ADSC));       // wait for conv. to complete
+		    unsigned char temp=ADCH;      //unsigned int temp=ADC;   for 10 bits
+   
+ return temp;
+}
+
+
+
+//SET PWM1A
+void set_pwm1a(int a)
+{
+OCR1A=a;
+}
+
+//SET PWM1B
+void set_pwm1b(int b)
+{
+OCR1B=b;
+}
+
+
+
+void main()
+{
+	DDRC=0xff;
+	
+	pwm1_init();
+	bot_motion_init();
+	adc_init();
+	int a,b;
+	DDRC=0xff;
+	PORTC=0xff;
+	
+	while(1)
+	{
+		a=adc_start(0);
+		b=adc_start(1);
+		
+		if(a>5 && b<5)
+		{
+			PORTC=0x02;
+			set_pwm1a(a);		//gives values for PWM
+			
+		}
+		
+		if(b>5 && a<5)
+		{
+			PORTC=0x01;
+			set_pwm1a(a);
+		}
+		
+		if(a>5 && b>5)
+		{
+			PORTC=0x00;
+		}
+		
+		
+	}
+
+
+}
+
